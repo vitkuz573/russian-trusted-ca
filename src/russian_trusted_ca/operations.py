@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import shutil
 import socket
 import ssl
 import subprocess
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 from russian_trusted_ca.constants import (
@@ -31,12 +33,30 @@ def _run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     )
 
 
-def install_certificates(distro: DistroInfo, *, force: bool = False) -> None:
+def _fingerprint(path: Path) -> str:
+    """Return SHA-256 fingerprint of a PEM certificate."""
+    result = _run(
+        ["openssl", "x509", "-in", str(path), "-noout", "-fingerprint", "-sha256"],
+    )
+    return result.stdout.strip().split("=", 1)[-1]
+
+
+def _backup_dir() -> Path:
+    return Path.home() / ".local" / "share" / "russian-trusted-ca" / "backups"
+
+
+def install_certificates(
+    distro: DistroInfo,
+    *,
+    force: bool = False,
+    backup: bool = False,
+) -> None:
     """Download and install Russian Trusted CA certificates.
 
     Args:
         distro: detected distribution layout.
         force: reinstall even if already present.
+        backup: save a timestamped copy of anchors before changing them.
     """
     paths = CertPaths(distro)
     if paths.is_installed() and not force:
@@ -49,6 +69,16 @@ def install_certificates(distro: DistroInfo, *, force: bool = False) -> None:
         raise FileNotFoundError(
             f"Anchors directory does not exist: {distro.anchors_dir}",
         )
+
+    if backup:
+        backup_path = _backup_dir() / datetime.now(timezone.utc).strftime(
+            "%Y%m%d%H%M%S",
+        )
+        backup_path.mkdir(parents=True, exist_ok=True)
+        for cert in (paths.root_cert, paths.sub_cert):
+            if cert.exists():
+                shutil.copy2(cert, backup_path / cert.name)
+                print(f"Backed up {cert} -> {backup_path / cert.name}")
 
     with tempfile.TemporaryDirectory(prefix="russian_trusted_ca_") as tmp:
         tmp_root = Path(tmp) / "root-ca.pem"
@@ -116,23 +146,105 @@ def print_status(distro: DistroInfo) -> int:
     return 0 if paths.is_installed() else 1
 
 
-def check_connection(host: str, port: int = 443) -> int:
-    """Verify TLS handshake with the default system trust store.
+def audit_certificates(distro: DistroInfo, *, fix: bool = False) -> int:
+    """Verify installed certificates match the expected fingerprints.
+
+    Args:
+        distro: detected distribution layout.
+        fix: re-download and reinstall certificates if fingerprints mismatch.
+
+    Returns:
+        0 if certificates are valid or successfully fixed, 1 otherwise.
+    """
+    paths = CertPaths(distro)
+    expected = {
+        paths.root_cert: (ROOT_CA_FINGERPRINT, ROOT_CA_SUBJECT),
+        paths.sub_cert: (SUB_CA_FINGERPRINT, SUB_CA_SUBJECT),
+    }
+    ok = True
+
+    for cert, (expected_fp, expected_subj) in expected.items():
+        if not cert.exists():
+            print(f"MISSING: {cert}")
+            ok = False
+            continue
+
+        try:
+            verify_certificate(cert, expected_subj, expected_fp)
+            print(f"OK:      {cert}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"BAD:     {cert} - {exc}")
+            ok = False
+
+    if not ok and fix:
+        print("Attempting to fix installed certificates ...")
+        install_certificates(distro, force=True)
+        return audit_certificates(distro, fix=False)
+
+    if ok:
+        print("Audit passed.")
+    else:
+        print("Audit failed. Run with --fix to reinstall.")
+
+    return 0 if ok else 1
+
+
+def list_system_cas(distro: DistroInfo, filter_text: str = "") -> int:
+    """List installed system CA certificates.
+
+    Args:
+        distro: detected distribution layout.
+        filter_text: optional substring to filter subjects.
+
+    Returns:
+        0 always.
+    """
+    bundle = distro.anchors_dir
+    if not bundle.exists():
+        print(f"Anchors directory not found: {bundle}")
+        return 0
+
+    for cert_file in sorted(bundle.glob(f"*{distro.cert_ext}")):
+        try:
+            subject = _run(
+                ["openssl", "x509", "-in", str(cert_file), "-noout", "-subject"],
+            ).stdout.strip()
+            if not filter_text or filter_text in subject:
+                print(f"{cert_file.name}: {subject}")
+        except subprocess.CalledProcessError:
+            continue
+
+    return 0
+
+
+def check_connection(
+    host: str,
+    port: int = 443,
+    *,
+    bundle: Path | None = None,
+) -> int:
+    """Verify TLS handshake.
 
     Args:
         host: hostname to connect to.
         port: TCP port.
+        bundle: optional scoped CA bundle to use instead of the system store.
 
     Returns:
         0 on success, 1 on failure.
     """
     print(f"Checking TLS connection to {host}:{port} ...")
-    context = ssl.create_default_context()
+    if bundle is not None:
+        print(f"Using CA bundle: {bundle}")
+        context = ssl.create_default_context(cafile=str(bundle))
+    else:
+        context = ssl.create_default_context()
     try:
         with socket.create_connection((host, port), timeout=10) as sock:
             with context.wrap_socket(sock, server_hostname=host) as tls_sock:
                 cert = tls_sock.getpeercert()
-                print(f"OK - TLS {tls_sock.version()} with {cert.get('subject')}")
+                subject = cert.get("subject") if cert else None
+                print(f"OK - TLS {tls_sock.version()} with {subject}")
                 return 0
     except ssl.SSLError as exc:
         print(f"FAILED - SSL error: {exc.reason}")
@@ -173,3 +285,4 @@ def build_bundle(output: Path) -> None:
     print("Bundle created successfully.")
     print(f"  {output}")
     print("Use it with: curl --cacert <bundle> https://online.sberbank.ru/")
+    print("Or import it into a single browser profile.")

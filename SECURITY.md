@@ -152,12 +152,13 @@ the OS trust store.
 
 ### Scoped CA bundle for curl
 
-Create a bundle containing both certificates and pass it only to the requests
-that need it:
+Use the built-in `bundle` command and pass the resulting file only to the
+requests that need it:
 
 ```bash
-cat root.crt sub.crt > russian-trusted-ca-bundle.pem
-curl --cacert russian-trusted-ca-bundle.pem https://online.sberbank.ru/
+russian-trusted-ca bundle
+curl --cacert ~/.local/share/russian-trusted-ca/russian-trusted-ca-bundle.pem \
+     https://online.sberbank.ru/
 ```
 
 ### Scoped SSL context in Python
@@ -180,6 +181,13 @@ with urllib.request.urlopen(req, context=ctx) as resp:
 Import the certificates only into a specific browser profile instead of the
 system store. Other applications and browser profiles remain unaffected.
 
+The tool can automate this for NSS-based browsers (Firefox, Chromium family)
+with:
+
+```bash
+russian-trusted-ca nss-install
+```
+
 ### Container / virtual machine
 
 Run the browser or automation script inside an isolated container or VM, install
@@ -196,7 +204,18 @@ when you need system-wide trust inside a narrow environment.
 * Regularly review installed CAs with `russian-trusted-ca status`.
 * Remove the CA when it is no longer needed: `russian-trusted-ca uninstall`.
 
-## 8. Reporting issues
+## 8. Coordinated disclosure
 
-If you find a security issue in this tool itself (not in the CA policy), please
-open a private issue or email Vitaly Kuzyaev <vitkuz573@gmail.com>.
+If you discover a security vulnerability in this tool itself (not in the CA
+policy), please report it privately before opening a public issue:
+
+* Email: Vitaly Kuzyaev <vitkuz573@gmail.com>
+* Subject: `[security] russian-trusted-ca`
+
+Please allow up to 7 days for an initial response. We will coordinate a fix and
+a disclosure timeline with you.
+
+## 9. Reporting issues
+
+For non-security bugs and feature requests, use the public issue tracker at
+https://github.com/vitkuz573/russian-trusted-ca/issues.

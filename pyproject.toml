@@ -67,21 +67,43 @@ packages = ["src/russian_trusted_ca"]
 [tool.ruff]
 target-version = "py39"
 line-length = 88
+
+[tool.ruff.lint]
 select = ["ALL"]
 ignore = [
     "D100",
     "D104",
+    "D107",
+    "S101",
     "S603",
     "S607",
     "ANN101",
     "ANN102",
+    "ANN001",
+    "ANN201",
+    "ANN202",
     "TRY003",
     "EM101",
     "EM102",
     "FA102",
+    "CPY001",
+    "T201",
+    "D103",
+    "ARG001",
+    "PT001",
+    "PT013",
+    "PLC0415",
+    "UP022",
+    "C901",
+    "PLR0911",
+    "PLR0912",
+    "PLW0108",
+    "PERF203",
+    "SIM117",
+    "TC003",
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.mypy]

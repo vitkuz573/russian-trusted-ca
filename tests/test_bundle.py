@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from russian_trusted_ca.cli import main
 from russian_trusted_ca.operations import build_bundle
 
+if TYPE_CHECKING:
+    from pytest import MonkeyPatch
 
-@pytest.fixture()
+EXPECTED_CERT_COUNT = 2
+
+
+@pytest.fixture
 def fake_certs(tmp_path: Path) -> tuple[Path, Path]:
     """Return a pair of valid self-signed certs that look like the official ones."""
     root = tmp_path / "root-ca.pem"
@@ -39,17 +46,33 @@ def fake_certs(tmp_path: Path) -> tuple[Path, Path]:
     return root, sub
 
 
-def test_build_bundle_creates_file(monkeypatch, tmp_path: Path, fake_certs):
-    root, sub = fake_certs
-
+def _fake_download_factory(root: Path, sub: Path):
+    """Return a download function that copies the fixture certs."""
     def fake_download(url: str, dest: Path) -> None:
         if "root" in url:
             dest.write_bytes(root.read_bytes())
         else:
             dest.write_bytes(sub.read_bytes())
 
-    monkeypatch.setattr("russian_trusted_ca.operations.download", fake_download)
-    monkeypatch.setattr("russian_trusted_ca.operations.verify_certificate", lambda *args, **kwargs: None)
+    return fake_download
+
+
+def test_build_bundle_creates_file(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+    fake_certs: tuple[Path, Path],
+) -> None:
+    """build_bundle should write a PEM bundle containing both certificates."""
+    root, sub = fake_certs
+
+    monkeypatch.setattr(
+        "russian_trusted_ca.operations.download",
+        _fake_download_factory(root, sub),
+    )
+    monkeypatch.setattr(
+        "russian_trusted_ca.operations.verify_certificate",
+        lambda _path, _cn, _fp: None,
+    )
 
     output = tmp_path / "bundle.pem"
     build_bundle(output)
@@ -57,21 +80,26 @@ def test_build_bundle_creates_file(monkeypatch, tmp_path: Path, fake_certs):
     assert output.exists()
     text = output.read_text()
     assert "BEGIN CERTIFICATE" in text
-    assert text.count("BEGIN CERTIFICATE") == 2
+    assert text.count("BEGIN CERTIFICATE") == EXPECTED_CERT_COUNT
 
 
-def test_cli_bundle(monkeypatch, tmp_path: Path, fake_certs):
+def test_cli_bundle(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+    fake_certs: tuple[Path, Path],
+) -> None:
+    """The bundle CLI subcommand should produce the bundle file."""
     root, sub = fake_certs
     output = tmp_path / "cli-bundle.pem"
 
-    def fake_download(url: str, dest: Path) -> None:
-        if "root" in url:
-            dest.write_bytes(root.read_bytes())
-        else:
-            dest.write_bytes(sub.read_bytes())
-
-    monkeypatch.setattr("russian_trusted_ca.operations.download", fake_download)
-    monkeypatch.setattr("russian_trusted_ca.operations.verify_certificate", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "russian_trusted_ca.operations.download",
+        _fake_download_factory(root, sub),
+    )
+    monkeypatch.setattr(
+        "russian_trusted_ca.operations.verify_certificate",
+        lambda _path, _cn, _fp: None,
+    )
     monkeypatch.setattr("russian_trusted_ca.cli.platform.system", lambda: "Linux")
     monkeypatch.setattr(
         "russian_trusted_ca.distro.detect_distro",
@@ -85,14 +113,12 @@ def test_cli_bundle(monkeypatch, tmp_path: Path, fake_certs):
 
     assert main(["bundle", "-o", str(output)]) == 0
     assert output.exists()
-    assert output.read_text().count("BEGIN CERTIFICATE") == 2
+    assert output.read_text().count("BEGIN CERTIFICATE") == EXPECTED_CERT_COUNT
 
 
 def _run_openssl(args: list[str]) -> None:
-    import subprocess
     subprocess.run(
         ["openssl", *args],
         check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
     )
