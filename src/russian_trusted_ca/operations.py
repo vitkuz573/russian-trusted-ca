@@ -139,10 +139,14 @@ def print_status(distro: DistroInfo) -> int:
     paths = CertPaths(distro)
     print(f"Distribution layout: {distro.name}")
     print(f"Anchors directory:   {distro.anchors_dir}")
-    print(f"Root CA:             {paths.root_cert}  "
-          f"{'present' if paths.root_cert.exists() else 'missing'}")
-    print(f"Sub CA:              {paths.sub_cert}   "
-          f"{'present' if paths.sub_cert.exists() else 'missing'}")
+    print(
+        f"Root CA:             {paths.root_cert}  "
+        f"{'present' if paths.root_cert.exists() else 'missing'}"
+    )
+    print(
+        f"Sub CA:              {paths.sub_cert}   "
+        f"{'present' if paths.sub_cert.exists() else 'missing'}"
+    )
     return 0 if paths.is_installed() else 1
 
 

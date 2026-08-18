@@ -14,10 +14,20 @@ def valid_self_signed(tmp_path: Path) -> Path:
     cert = tmp_path / "cert.pem"
     subprocess.run(
         [
-            "openssl", "req", "-x509", "-newkey", "rsa:2048",
-            "-keyout", str(tmp_path / "key.pem"),
-            "-out", str(cert), "-days", "1", "-nodes",
-            "-subj", "/CN=Russian Trusted Root CA",
+            "openssl",
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:2048",
+            "-keyout",
+            str(tmp_path / "key.pem"),
+            "-out",
+            str(cert),
+            "-days",
+            "1",
+            "-nodes",
+            "-subj",
+            "/CN=Russian Trusted Root CA",
         ],
         check=True,
         stdout=subprocess.PIPE,
@@ -44,6 +54,7 @@ def test_verify_certificate_bad_fingerprint(valid_self_signed: Path):
 
 def _fingerprint(path: Path) -> str:
     import subprocess
+
     result = subprocess.run(
         ["openssl", "x509", "-in", str(path), "-noout", "-fingerprint", "-sha256"],
         check=True,

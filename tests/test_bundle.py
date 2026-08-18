@@ -25,29 +25,56 @@ def fake_certs(tmp_path: Path) -> tuple[Path, Path]:
     root_key = tmp_path / "root-key.pem"
     sub_key = tmp_path / "sub-key.pem"
 
-    _run_openssl([
-        "req", "-x509", "-newkey", "rsa:2048",
-        "-keyout", str(root_key), "-out", str(root),
-        "-days", "1", "-nodes",
-        "-subj", "/CN=Russian Trusted Root CA",
-        "-addext", "basicConstraints=critical,CA:TRUE",
-        "-addext", "keyUsage=critical,keyCertSign,cRLSign",
-    ])
+    _run_openssl(
+        [
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:2048",
+            "-keyout",
+            str(root_key),
+            "-out",
+            str(root),
+            "-days",
+            "1",
+            "-nodes",
+            "-subj",
+            "/CN=Russian Trusted Root CA",
+            "-addext",
+            "basicConstraints=critical,CA:TRUE",
+            "-addext",
+            "keyUsage=critical,keyCertSign,cRLSign",
+        ]
+    )
 
-    _run_openssl([
-        "req", "-x509", "-newkey", "rsa:2048",
-        "-keyout", str(sub_key), "-out", str(sub),
-        "-days", "1", "-nodes",
-        "-subj", "/CN=Russian Trusted Sub CA",
-        "-addext", "basicConstraints=critical,CA:TRUE",
-        "-addext", "keyUsage=critical,keyCertSign,cRLSign",
-    ])
+    _run_openssl(
+        [
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:2048",
+            "-keyout",
+            str(sub_key),
+            "-out",
+            str(sub),
+            "-days",
+            "1",
+            "-nodes",
+            "-subj",
+            "/CN=Russian Trusted Sub CA",
+            "-addext",
+            "basicConstraints=critical,CA:TRUE",
+            "-addext",
+            "keyUsage=critical,keyCertSign,cRLSign",
+        ]
+    )
 
     return root, sub
 
 
 def _fake_download_factory(root: Path, sub: Path):
     """Return a download function that copies the fixture certs."""
+
     def fake_download(url: str, dest: Path) -> None:
         if "root" in url:
             dest.write_bytes(root.read_bytes())
@@ -103,12 +130,16 @@ def test_cli_bundle(
     monkeypatch.setattr("russian_trusted_ca.cli.platform.system", lambda: "Linux")
     monkeypatch.setattr(
         "russian_trusted_ca.distro.detect_distro",
-        lambda: type("Distro", (), {
-            "name": "test",
-            "anchors_dir": tmp_path,
-            "update_cmd": ["update-certs"],
-            "cert_ext": ".crt",
-        })(),
+        lambda: type(
+            "Distro",
+            (),
+            {
+                "name": "test",
+                "anchors_dir": tmp_path,
+                "update_cmd": ["update-certs"],
+                "cert_ext": ".crt",
+            },
+        )(),
     )
 
     assert main(["bundle", "-o", str(output)]) == 0

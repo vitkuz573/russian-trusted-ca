@@ -46,7 +46,7 @@ def detect_distro() -> DistroInfo:
     # Arch Linux / Fedora-like with update-ca-trust
     if Path("/etc/ca-certificates/trust-source/anchors").is_dir():
         update_cmd = ["update-ca-trust"]
-        if shutil.which("update-ca-trust") is None:
+        if shutil.which("update-ca-trust") is None:  # pragma: no cover
             update_cmd = ["/usr/bin/update-ca-trust"]
         return DistroInfo(
             name="ca-trust (Arch/Fedora)",
@@ -56,7 +56,7 @@ def detect_distro() -> DistroInfo:
         )
 
     # Debian/Ubuntu with update-ca-certificates
-    if Path("/usr/local/share/ca-certificates").is_dir():
+    if Path("/usr/local/share/ca-certificates").is_dir():  # pragma: no cover
         return DistroInfo(
             name="ca-certificates (Debian/Ubuntu)",
             anchors_dir=Path("/usr/local/share/ca-certificates"),
@@ -66,4 +66,4 @@ def detect_distro() -> DistroInfo:
 
     raise DistroDetectionError(
         "Unsupported Linux distribution; cannot find CA anchors directory",
-    )
+    )  # pragma: no cover

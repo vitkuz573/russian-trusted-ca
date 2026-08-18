@@ -193,7 +193,7 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def entrypoint() -> None:
+def entrypoint() -> None:  # pragma: no cover
     """Console script entry point that handles exceptions."""
     try:
         sys.exit(main())

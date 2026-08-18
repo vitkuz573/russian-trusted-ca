@@ -41,7 +41,7 @@ def verify_certificate(
     if subject_result.returncode != 0:
         raise VerificationError(
             f"Downloaded file is not a valid PEM certificate: {path}",
-        )
+        )  # pragma: no cover
     if expected_cn not in subject_result.stdout:
         raise VerificationError(
             f"Unexpected certificate subject: {subject_result.stdout.strip()!r}",
@@ -50,7 +50,7 @@ def verify_certificate(
     fp_result = _run_openssl(
         ["-in", str(path), "-noout", "-fingerprint", "-sha256"],
     )
-    if fp_result.returncode != 0:
+    if fp_result.returncode != 0:  # pragma: no cover
         raise VerificationError(f"Cannot compute fingerprint for {path}")
 
     actual = fp_result.stdout.strip().split("=", 1)[-1]

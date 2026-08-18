@@ -43,8 +43,14 @@ def nss_profile_dirs() -> list[Path]:
     candidates: list[Path] = []
 
     # Chromium / Google Chrome family
-    for browser in (".pki", ".config/chromium", ".config/google-chrome",
-                    ".config/chrome", ".config/vivaldi", ".config/opera"):
+    for browser in (
+        ".pki",
+        ".config/chromium",
+        ".config/google-chrome",
+        ".config/chrome",
+        ".config/vivaldi",
+        ".config/opera",
+    ):
         base = home / browser
         if not base.exists():
             continue
@@ -52,16 +58,14 @@ def nss_profile_dirs() -> list[Path]:
             candidates.append(base / "nssdb")
         else:
             candidates.extend(
-                d for d in base.iterdir()
-                if d.is_dir() and (d / "cert9.db").exists()
+                d for d in base.iterdir() if d.is_dir() and (d / "cert9.db").exists()
             )
 
     # Firefox
     firefox_dir = home / ".mozilla" / "firefox"
     if firefox_dir.exists():
         candidates.extend(
-            d for d in firefox_dir.iterdir()
-            if d.is_dir() and (d / "cert9.db").exists()
+            d for d in firefox_dir.iterdir() if d.is_dir() and (d / "cert9.db").exists()
         )
 
     return sorted({str(p): p for p in candidates if p.exists()}.values())
@@ -100,14 +104,20 @@ def install_to_nss(
 
     for db_dir in dirs:
         db_dir.mkdir(parents=True, exist_ok=True)
-        _run_certutil([
-            certutil,
-            "-A",
-            "-d", f"sql:{db_dir}",
-            "-n", nickname,
-            "-t", trust,
-            "-i", str(cert_path),
-        ])
+        _run_certutil(
+            [
+                certutil,
+                "-A",
+                "-d",
+                f"sql:{db_dir}",
+                "-n",
+                nickname,
+                "-t",
+                trust,
+                "-i",
+                str(cert_path),
+            ]
+        )
         print(f"Installed {nickname} into {db_dir}")
 
 
@@ -129,12 +139,16 @@ def remove_from_nss(
 
     for db_dir in dirs:
         try:
-            _run_certutil([
-                certutil,
-                "-D",
-                "-d", f"sql:{db_dir}",
-                "-n", nickname,
-            ])
+            _run_certutil(
+                [
+                    certutil,
+                    "-D",
+                    "-d",
+                    f"sql:{db_dir}",
+                    "-n",
+                    nickname,
+                ]
+            )
             print(f"Removed {nickname} from {db_dir}")
         except subprocess.CalledProcessError as exc:
             msg = exc.stdout.strip()
