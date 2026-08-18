@@ -1,5 +1,6 @@
 """Tests for certificate download utilities."""
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -18,7 +19,7 @@ def test_download_failed(mocker, tmp_path: Path):
     mocker.patch("shutil.which", return_value="/usr/bin/curl")
     mocker.patch(
         "subprocess.run",
-        side_effect=Exception("network error"),
+        side_effect=subprocess.CalledProcessError(1, ["curl"], stderr=b"network error"),
     )
     with pytest.raises(DownloadError):
         download("https://example.com/cert.pem", tmp_path / "cert.pem")

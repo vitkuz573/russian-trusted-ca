@@ -5,10 +5,12 @@ from __future__ import annotations
 import argparse
 import platform
 import sys
+from pathlib import Path
 
 from russian_trusted_ca.distro import detect_distro
 from russian_trusted_ca.exceptions import PlatformError, RussianTrustedCAError
 from russian_trusted_ca.operations import (
+    build_bundle,
     check_connection,
     install_certificates,
     print_status,
@@ -39,6 +41,18 @@ def _build_parser() -> argparse.ArgumentParser:
     check_parser.add_argument("host", help="hostname to connect to")
     check_parser.add_argument("--port", type=int, default=443, help="TCP port")
 
+    bundle_parser = sub.add_parser(
+        "bundle",
+        help="download certificates and build a scoped CA bundle",
+    )
+    bundle_parser.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        default=Path.home() / ".local" / "share" / "russian-trusted-ca" / "russian-trusted-ca-bundle.pem",
+        help="path to write the bundle (default: ~/.local/share/russian-trusted-ca/russian-trusted-ca-bundle.pem)",
+    )
+
     return parser
 
 
@@ -67,6 +81,8 @@ def main(argv: list[str] | None = None) -> int:
         return print_status(distro)
     elif args.command == "check":
         return check_connection(args.host, args.port)
+    elif args.command == "bundle":
+        build_bundle(args.output)
 
     return 0
 

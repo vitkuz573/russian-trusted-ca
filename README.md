@@ -113,27 +113,29 @@ OK - TLS TLSv1.2 with Sberbank of Russia (*.online.sberbank.ru)
 
 Если цель — получить доступ к конкретным сайтам без глобального доверия CA, используйте один из scoped-вариантов.
 
-### 1. curl / wget: указать CA только для одного запроса
+### 1. Утилита: собрать scoped bundle
 
 ```bash
-# Скачать официальные сертификаты
-mkdir -p ~/.local/share/russian-trusted-ca
-curl -fsSL --insecure -o ~/.local/share/russian-trusted-ca/root.crt \
-  https://gu-st.ru/content/lending/russian_trusted_root_ca_pem.crt
-curl -fsSL --insecure -o ~/.local/share/russian-trusted-ca/sub.crt \
-  https://gu-st.ru/content/lending/russian_trusted_sub_ca_pem.crt
+russian-trusted-ca bundle
+```
 
-# Объединить в bundle
-cat ~/.local/share/russian-trusted-ca/root.crt \
-    ~/.local/share/russian-trusted-ca/sub.crt \
-    > ~/.local/share/russian-trusted-ca/russian-trusted-ca-bundle.pem
+По умолчанию bundle сохраняется в:
+`~/.local/share/russian-trusted-ca/russian-trusted-ca-bundle.pem`.
 
-# Использовать только для целевого сайта
+Можно указать другой путь:
+
+```bash
+russian-trusted-ca bundle -o ./russian-trusted-ca-bundle.pem
+```
+
+Полученный bundle можно использовать с `curl`:
+
+```bash
 curl --cacert ~/.local/share/russian-trusted-ca/russian-trusted-ca-bundle.pem \
      https://online.sberbank.ru/
 ```
 
-Плюсы: доверие действует только для явно указанного вызова. Минусы: работает только с инструментами, которые принимают `--cacert`.
+Плюсы: доверие действует только для явно указанного вызова, системное хранилище не изменяется.
 
 ### 2. Python: scoped SSL-контекст
 

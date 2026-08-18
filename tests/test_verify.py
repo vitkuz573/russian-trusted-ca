@@ -1,5 +1,6 @@
 """Tests for certificate verification."""
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -11,7 +12,7 @@ from russian_trusted_ca.verify import verify_certificate
 @pytest.fixture()
 def valid_self_signed(tmp_path: Path) -> Path:
     cert = tmp_path / "cert.pem"
-    subprocess_run(
+    subprocess.run(
         [
             "openssl", "req", "-x509", "-newkey", "rsa:2048",
             "-keyout", str(tmp_path / "key.pem"),

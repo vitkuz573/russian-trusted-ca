@@ -140,3 +140,36 @@ def check_connection(host: str, port: int = 443) -> int:
     except OSError as exc:
         print(f"FAILED - connection error: {exc}")
         return 1
+
+
+def build_bundle(output: Path) -> None:
+    """Download, verify, and bundle certificates without touching the system store.
+
+    The resulting PEM bundle can be used with ``curl --cacert``,
+    ``ssl.create_default_context(cafile=...)`` or imported into a single browser
+    profile. It is not installed into the OS-wide trust store.
+
+    Args:
+        output: destination path for the PEM bundle.
+    """
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory(prefix="russian_trusted_ca_bundle_") as tmp:
+        tmp_root = Path(tmp) / "root-ca.pem"
+        tmp_sub = Path(tmp) / "sub-ca.pem"
+
+        print(f"Downloading root CA from {ROOT_CA_URL} ...")
+        download(ROOT_CA_URL, tmp_root)
+        print(f"Downloading sub CA from {SUB_CA_URL} ...")
+        download(SUB_CA_URL, tmp_sub)
+
+        print("Verifying downloaded certificates ...")
+        verify_certificate(tmp_root, ROOT_CA_SUBJECT, ROOT_CA_FINGERPRINT)
+        verify_certificate(tmp_sub, SUB_CA_SUBJECT, SUB_CA_FINGERPRINT)
+
+        print(f"Writing bundle to {output} ...")
+        output.write_text(tmp_root.read_text() + "\n" + tmp_sub.read_text())
+
+    print("Bundle created successfully.")
+    print(f"  {output}")
+    print("Use it with: curl --cacert <bundle> https://online.sberbank.ru/")
