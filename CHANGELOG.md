@@ -15,6 +15,8 @@
 - `list` command: list installed system CA certificates with optional filter.
 - `install --backup`: create a timestamped backup of anchors before installation.
 - `README_EN.md` with full English documentation.
+- Synchronized Russian `README.md` with full command reference and examples.
+- Added project badges and table of contents to README files.
 - `SECURITY.md` with certificate analysis, local MITM PoC and risk assessment.
 
 ## 1.0.0 — 2026-08-18

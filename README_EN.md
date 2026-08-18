@@ -1,5 +1,9 @@
 # russian-trusted-ca
 
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)
+
 CLI tool to install and remove the Russian Ministry of Digital Development's
 root certificates (Russian Trusted Root CA / Sub CA) from the Linux system
 trust store.
@@ -24,7 +28,9 @@ national CA not trusted by most Linux distributions by default.
 - TLS handshake check against the system trust store or a scoped CA bundle;
 - scoped installation into Firefox / Chromium NSS profiles without touching the
   OS trust store;
-- audit and list commands to inspect installed certificates.
+- audit command to verify installed certificates by fingerprint;
+- list command to inspect installed system CAs;
+- backup of existing anchors before installation.
 
 ## Requirements
 
@@ -63,6 +69,8 @@ Create a backup of existing anchors before installing:
 russian-trusted-ca install --backup
 ```
 
+Backups are saved to `~/.local/share/russian-trusted-ca/backups/<timestamp>/`.
+
 ### Uninstall system-wide
 
 ```bash
@@ -76,6 +84,8 @@ russian-trusted-ca status
 ```
 
 ### Audit installed certificates
+
+Verify that installed files match the known fingerprints:
 
 ```bash
 russian-trusted-ca audit
@@ -134,6 +144,12 @@ Use the bundle with `curl`:
 ```bash
 curl --cacert ~/.local/share/russian-trusted-ca/russian-trusted-ca-bundle.pem \
      https://online.sberbank.ru/
+```
+
+Build a bundle and import it into found browser profiles:
+
+```bash
+russian-trusted-ca bundle --install-nss
 ```
 
 ### Install into a browser profile only (NSS)
@@ -261,6 +277,12 @@ Use `russian-trusted-ca nss-install` to add the CA only to browser NSS
 databases. This is a middle ground between a per-request bundle and a full
 system install.
 
+### Run as a Python module
+
+```bash
+python -m russian_trusted_ca status
+```
+
 ### When to use this tool system-wide
 
 System-wide installation is justified when:
@@ -275,6 +297,7 @@ System-wide installation is justified when:
 pip install -e ".[dev]"
 make lint
 make test
+make typecheck
 ```
 
 ## Author

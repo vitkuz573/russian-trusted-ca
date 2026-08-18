@@ -1,10 +1,28 @@
 # russian-trusted-ca
 
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)
+
 CLI-утилита для установки и удаления корневых сертификатов Минцифры России (Russian Trusted Root CA / Sub CA) в системное хранилище доверенных центров сертификации.
 
 Полезна для доступа к российским государственным сайтам и банкам (например, `online.sberbank.ru`, `gosuslugi.ru`), которые используют сертификаты, выпущенные российским удостоверяющим центром, не включённым по умолчанию в большинство дистрибутивов Linux.
 
-> **Важно:** системная установка корневого CA влияет на безопасность всей системы. Если вам нужен доступ только к конкретным сайтам, рассмотрите [безопасные альтернативы](#безопасные-альтернативы-системной-установке) вместо этой утилиты.
+> **Важно:** системная установка корневого CA влияет на безопасность всей системы. Если вам нужен доступ только к конкретным сайтам, сначала рассмотрите [безопасные альтернативы](#безопасные-альтернативы-системной-установке). [English version](README_EN.md).
+
+## Содержание
+
+- [Возможности](#возможности)
+- [Требования](#требования)
+- [Установка](#установка)
+- [Использование](#использование)
+- [Пример](#пример)
+- [Проверка подлинности сертификатов](#проверка-подлинности-сертификатов)
+- [Риски](#риски)
+- [Безопасные альтернативы системной установке](#безопасные-альтернативы-системной-установке)
+- [Разработка](#разработка)
+- [Автор](#автор)
+- [Лицензия](#лицензия)
 
 ## Возможности
 
@@ -14,7 +32,10 @@ CLI-утилита для установки и удаления корневы�
   - Arch Linux (`ca-certificates` / `update-ca-trust`);
   - Debian/Ubuntu (`ca-certificates` / `update-ca-certificates`);
   - Fedora и совместимые системы (`update-ca-trust`).
-- проверка TLS-соединения с произвольным хостом через системное хранилище сертификатов.
+- проверка TLS-соединения с произвольным хостом через системное хранилище или scoped bundle;
+- scoped-установка в профиль Firefox / Chromium через NSS без изменения системного хранилища;
+- аудит установленных сертификатов по fingerprint;
+- список установленных системных CA.
 
 ## Требования
 
@@ -22,7 +43,8 @@ CLI-утилита для установки и удаления корневы�
 - Python 3.9 или новее;
 - `curl`;
 - `openssl`;
-- `sudo` для записи в системные директории сертификатов.
+- `sudo` для записи в системные директории сертификатов;
+- `certutil` из пакета `nss-tools` для установки в профиль браузера (NSS).
 
 ## Установка
 
@@ -32,21 +54,35 @@ cd russian-trusted-ca
 pip install -e .
 ```
 
+Для разработки:
+
+```bash
+pip install -e ".[dev]"
+```
+
 ## Использование
 
-### Установить сертификаты
+### Установить сертификаты в систему
 
 ```bash
 russian-trusted-ca install
 ```
 
-Для переустановки используйте `--force`:
+Переустановка:
 
 ```bash
 russian-trusted-ca install --force
 ```
 
-### Удалить сертификаты
+Установка с резервной копией существующих сертификатов:
+
+```bash
+russian-trusted-ca install --backup
+```
+
+Резервные копии сохраняются в `~/.local/share/russian-trusted-ca/backups/<timestamp>/`.
+
+### Удалить сертификаты из системы
 
 ```bash
 russian-trusted-ca uninstall
@@ -58,14 +94,97 @@ russian-trusted-ca uninstall
 russian-trusted-ca status
 ```
 
+### Аудит установленных сертификатов
+
+Проверяет, что установленные файлы совпадают с известными fingerprint:
+
+```bash
+russian-trusted-ca audit
+```
+
+Если fingerprint не совпадают, автоматически переустановить:
+
+```bash
+russian-trusted-ca audit --fix
+```
+
+### Список установленных системных CA
+
+```bash
+russian-trusted-ca list
+russian-trusted-ca list --filter "Russian Trusted"
+```
+
 ### Проверить соединение с хостом
+
+Через системное хранилище:
 
 ```bash
 russian-trusted-ca check online.sberbank.ru
-russian-trusted-ca check gosuslugi.ru
 ```
 
-Также можно запускать как Python-модуль:
+Через scoped bundle:
+
+```bash
+russian-trusted-ca check online.sberbank.ru \
+  --bundle ~/.local/share/russian-trusted-ca/russian-trusted-ca-bundle.pem
+```
+
+### Собрать scoped CA bundle
+
+```bash
+russian-trusted-ca bundle
+```
+
+По умолчанию bundle сохраняется в:
+`~/.local/share/russian-trusted-ca/russian-trusted-ca-bundle.pem`.
+
+Другой путь:
+
+```bash
+russian-trusted-ca bundle -o ./russian-trusted-ca-bundle.pem
+```
+
+Вывести путь по умолчанию:
+
+```bash
+russian-trusted-ca bundle --print-path
+```
+
+Использовать bundle с `curl`:
+
+```bash
+curl --cacert ~/.local/share/russian-trusted-ca/russian-trusted-ca-bundle.pem \
+     https://online.sberbank.ru/
+```
+
+### Установить CA только в профиль браузера (NSS)
+
+Это ограничивает доверие профилем браузера, не затрагивая системное хранилище.
+
+```bash
+russian-trusted-ca nss-install
+```
+
+Конкретный профиль:
+
+```bash
+russian-trusted-ca nss-install --profile ~/.pki/nssdb
+```
+
+Установить свежий bundle и сразу импортировать в найденные профили:
+
+```bash
+russian-trusted-ca bundle --install-nss
+```
+
+Удалить из профилей:
+
+```bash
+russian-trusted-ca nss-uninstall
+```
+
+### Запуск как Python-модуль
 
 ```bash
 python -m russian_trusted_ca status
@@ -107,6 +226,9 @@ OK - TLS TLSv1.2 with Sberbank of Russia (*.online.sberbank.ru)
 - многие международные сервисы и браузеры не признают этот CA доверенным по умолчанию;
 - удалить сертификаты можно в любой момент командой `russian-trusted-ca uninstall`.
 
+Подробный разбор рисков, анализ полей сертификатов и локальный PoC MITM — в
+[`SECURITY.md`](SECURITY.md).
+
 Устанавливайте только если понимаете последствия и доверяете Минцифры России как удостоверяющему центру.
 
 ## Безопасные альтернативы системной установке
@@ -117,25 +239,11 @@ OK - TLS TLSv1.2 with Sberbank of Russia (*.online.sberbank.ru)
 
 ```bash
 russian-trusted-ca bundle
-```
-
-По умолчанию bundle сохраняется в:
-`~/.local/share/russian-trusted-ca/russian-trusted-ca-bundle.pem`.
-
-Можно указать другой путь:
-
-```bash
-russian-trusted-ca bundle -o ./russian-trusted-ca-bundle.pem
-```
-
-Полученный bundle можно использовать с `curl`:
-
-```bash
 curl --cacert ~/.local/share/russian-trusted-ca/russian-trusted-ca-bundle.pem \
      https://online.sberbank.ru/
 ```
 
-Плюсы: доверие действует только для явно указанного вызова, системное хранилище не изменяется.
+Доверие действует только для явно указанного вызова, системное хранилище не изменяется.
 
 ### 2. Python: scoped SSL-контекст
 
@@ -163,6 +271,12 @@ with urllib.request.urlopen(req, context=ctx) as resp:
 
 При импорте выберите «Доверять при идентификации веб-сайтов» только если уверены в источнике.
 
+Для NSS-совместимых браузеров можно использовать встроенную команду:
+
+```bash
+russian-trusted-ca nss-install
+```
+
 ### 4. Отдельный браузерный профиль
 
 Создайте профиль Chrome/Firefox только для работы с российскими госуслугами и импортируйте CA туда. Остальные профили и приложения останутся незатронуты.
@@ -171,7 +285,7 @@ with urllib.request.urlopen(req, context=ctx) as resp:
 
 Запустите браузер или скрипт внутри Docker/VM, установите CA внутри изолированного окружения, не трогая хост. Это защищает основную систему даже при компрометации CA.
 
-### Когда использовать эту утилиту
+### Когда использовать системную установку
 
 Системная установка оправдана, если:
 
@@ -185,6 +299,7 @@ with urllib.request.urlopen(req, context=ctx) as resp:
 pip install -e ".[dev]"
 make lint
 make test
+make typecheck
 ```
 
 ## Автор
