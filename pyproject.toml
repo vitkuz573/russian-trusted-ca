@@ -1,0 +1,95 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "russian-trusted-ca"
+version = "1.0.0"
+description = "CLI tool for installing/removing Russian Trusted Root CA certificates"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    { name = "Vitaly Kuzyaev", email = "vitkuz573@gmail.com" },
+]
+keywords = [
+    "russian-trusted-ca",
+    "mincifr",
+    "certificate",
+    "ssl",
+    "tls",
+    "ca",
+    "root-ca",
+    "system-trust",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security :: Cryptography",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.5",
+    "pre-commit>=3.4",
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+russian-trusted-ca = "russian_trusted_ca.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/vitkuz573/russian-trusted-ca"
+Repository = "https://github.com/vitkuz573/russian-trusted-ca"
+Issues = "https://github.com/vitkuz573/russian-trusted-ca/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/russian_trusted_ca"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 88
+select = ["ALL"]
+ignore = [
+    "D100",
+    "D104",
+    "S603",
+    "S607",
+    "ANN101",
+    "ANN102",
+    "TRY003",
+    "EM101",
+    "EM102",
+    "FA102",
+]
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+show_error_codes = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=russian_trusted_ca --cov-report=term-missing --cov-report=xml"
